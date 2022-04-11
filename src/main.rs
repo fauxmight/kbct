@@ -268,7 +268,7 @@ impl EventObserver for KeyLogger {
 }
 
 
-fn check_uinput_loaded() -> std::result::Result<(),&'static str> {
+fn check_uinput_loaded() -> Result<()> {
 	let mut kernel_version = std::fs::read_to_string("/proc/version").unwrap();
 	kernel_version = kernel_version.split(' ')
 		.nth(2)
@@ -296,7 +296,7 @@ fn check_uinput_loaded() -> std::result::Result<(),&'static str> {
 			return Ok(());
 		}
 	}
-	Err("'uinput' module must be loaded OR built into the kernel")
+	Err(KbctError::Error("'uinput' module must be loaded OR built into the kernel".into()))
 }
 
 fn start_mapper_from_file_conf(config_file: String) -> Result<()> {
