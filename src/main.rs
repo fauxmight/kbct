@@ -267,36 +267,41 @@ impl EventObserver for KeyLogger {
 	}
 }
 
-fn check_uinput_loaded() -> bool {
-	let mut kernel_version = std::fs::read_to_string("/proc/version").unwrap();
-	kernel_version = kernel_version.to_string().split(' ').nth(2).unwrap().to_string();
-
-	let built_in_modules = std::fs::read_to_string(String::from("/lib/modules/") + &kernel_version + &String::from("/modules.builtin")).unwrap();
+fn check_uinput_loaded() -> Result<()> {
+	let mut kernel_version = std::fs::read_to_string("/proc/version")?;
+	kernel_version = kernel_version.split(' ').nth(2).unwrap().to_string();
+	let built_in_modules_file =
+		String::from("/lib/modules/") + &kernel_version + &String::from("/modules.builtin");
+	let built_in_modules = std::fs::read_to_string(&built_in_modules_file)?;
 	for line in built_in_modules.lines() {
 		if line.eq("kernel/drivers/input/misc/uinput.ko") {
-			info!("'uinput' is built into running kernel version: {}", kernel_version);
-			return true;
+			info!(
+				"'uinput' is built into running kernel version: {}",
+				kernel_version
+			);
+			return Ok(());
 		}
 	}
 
-	let modules = std::fs::read_to_string("/proc/modules").unwrap();
+	let modules = std::fs::read_to_string("/proc/modules")?;
 	for line in modules.lines() {
 		if line.starts_with("uinput ") {
 			info!("'uinput' module is loaded");
-			return true;
+			return Ok(());
 		}
 	}
-	return false;
+	Err(KbctError::Error(
+		"'uinput' module must be loaded OR built into the kernel".into(),
+	))
 }
 
 fn start_mapper_from_file_conf(config_file: String) -> Result<()> {
-	if !check_uinput_loaded() {
-		panic!("'uinput' module must be loaded OR built into the kernel");
-	}
+	check_uinput_loaded().unwrap();
 	let config = serde_yaml::from_str(
 		&*std::fs::read_to_string(config_file.as_str())
-			.expect(&format!("Could not open file {}", config_file)))
-		.expect("Could not parse the configuration yaml file");
+			.expect(&format!("Could not open file {}", config_file)),
+	)
+	.expect("Could not parse the configuration yaml file");
 	start_mapper(config)
 }
 
