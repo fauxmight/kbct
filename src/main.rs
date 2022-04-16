@@ -267,18 +267,12 @@ impl EventObserver for KeyLogger {
 	}
 }
 
-
 fn check_uinput_loaded() -> Result<()> {
-	let mut kernel_version = std::fs::read_to_string("/proc/version").unwrap();
-	kernel_version = kernel_version.split(' ')
-		.nth(2)
-		.unwrap()
-		.to_string();
-
-	let built_in_modules = std::fs::read_to_string(
-		String::from("/lib/modules/") + &kernel_version + &String::from("/modules.builtin"),
-	)
-	.unwrap();
+	let mut kernel_version = std::fs::read_to_string("/proc/version")?;
+	kernel_version = kernel_version.split(' ').nth(2).unwrap().to_string();
+	let built_in_modules_file =
+		String::from("/lib/modules/") + &kernel_version + &String::from("/modules.builtin");
+	let built_in_modules = std::fs::read_to_string(&built_in_modules_file)?;
 	for line in built_in_modules.lines() {
 		if line.eq("kernel/drivers/input/misc/uinput.ko") {
 			info!(
@@ -289,14 +283,16 @@ fn check_uinput_loaded() -> Result<()> {
 		}
 	}
 
-	let modules = std::fs::read_to_string("/proc/modules").unwrap();
+	let modules = std::fs::read_to_string("/proc/modules")?;
 	for line in modules.lines() {
 		if line.starts_with("uinput ") {
 			info!("'uinput' module is loaded");
 			return Ok(());
 		}
 	}
-	Err(KbctError::Error("'uinput' module must be loaded OR built into the kernel".into()))
+	Err(KbctError::Error(
+		"'uinput' module must be loaded OR built into the kernel".into(),
+	))
 }
 
 fn start_mapper_from_file_conf(config_file: String) -> Result<()> {
